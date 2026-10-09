@@ -6,13 +6,16 @@ struct TranscriptBody: View {
     let transcript: Transcript
     var rename: ((Int, String) -> Void)?
 
+    /// Off: readable text (no fillers or stutters). On: exactly as spoken.
+    @AppStorage("verbatim") private var verbatim = false
     @State private var renaming: Int?
     @State private var draft = ""
 
     var body: some View {
         let segments = transcript.segments
         if segments.isEmpty {
-            Text(transcript.text.isEmpty ? "(no speech found)" : transcript.text).textSelection(.enabled)
+            Text(transcript.text.isEmpty ? "(no speech found)" : verbatim ? transcript.text : Readable.clean(transcript.text))
+                .textSelection(.enabled)
         } else {
             let longRecording = (segments.last?.start ?? 0) >= 3600
             let paragraphs = Self.paragraphs(segments)
@@ -28,7 +31,7 @@ struct TranscriptBody: View {
                             if let speaker = p.speaker, i == 0 || paragraphs[i - 1].speaker != speaker {
                                 speakerLabel(speaker)
                             }
-                            Text(p.text).textSelection(.enabled)
+                            Text(verbatim ? p.text : Readable.clean(p.text)).textSelection(.enabled)
                         }
                     }
                 }
@@ -66,19 +69,41 @@ struct TranscriptBody: View {
         }
     }
 
-    /// Joins phrases into paragraphs, breaking at a change of speaker, a pause, or after ~30 s.
+    /// Joins phrases into paragraphs. Breaks at a change of speaker; at a pause or after ~30 s
+    /// only once the sentence has ended, so a paragraph never stops mid-sentence (up to ~90 s).
     nonisolated static func paragraphs(_ segments: [Segment]) -> [Segment] {
         var out: [Segment] = []
-        for s in segments {
-            if var last = out.last, last.speaker == s.speaker, s.start - last.end < 1.5, s.end - last.start < 30 {
-                last.text += " " + s.text
-                last.end = s.end
-                out[out.count - 1] = last
-            } else {
-                out.append(s)
+        for s in smoothed(segments) {
+            if var last = out.last, last.speaker == s.speaker {
+                let sentenceEnded = last.text.last.map { ".?!".contains($0) } ?? false
+                let shortGap = s.start - last.end < 1.5 && s.end - last.start < 30
+                if shortGap || (!sentenceEnded && s.end - last.start < 90) {
+                    last.text += " " + s.text
+                    last.end = s.end
+                    out[out.count - 1] = last
+                    continue
+                }
             }
+            out.append(s)
         }
         return out
+    }
+
+    /// The speaker model sometimes gives a few words to the wrong person in the middle of
+    /// someone's turn ("of us", "I might"). A fragment of up to three words, not a finished
+    /// sentence, with the same speaker on both sides is given to that speaker.
+    nonisolated static func smoothed(_ segments: [Segment]) -> [Segment] {
+        var segments = segments
+        guard segments.count > 2 else { return segments }
+        for i in 1..<(segments.count - 1) {
+            let around = segments[i - 1].speaker
+            let text = segments[i].text
+            if let around, around == segments[i + 1].speaker, segments[i].speaker != around,
+               text.split(separator: " ").count <= 3, !(text.last.map { ".?!".contains($0) } ?? false) {
+                segments[i].speaker = around
+            }
+        }
+        return segments
     }
 
     static func color(_ speaker: Int) -> Color {

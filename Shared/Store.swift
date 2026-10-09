@@ -53,12 +53,19 @@ struct Transcript: Codable, Identifiable, Hashable, Sendable {
         speakerNames = names
     }
 
-    /// Text for Copy and Share: "Name: paragraph" blocks when speakers are known.
-    var exportText: String {
+    /// Text for Copy and Share, readable unless verbatim. With speakers, the name starts
+    /// each change of speaker ("Name: paragraph"); further paragraphs follow on their own.
+    func exportText(verbatim: Bool) -> String {
         let paragraphs = TranscriptBody.paragraphs(segments)
-        guard paragraphs.contains(where: { $0.speaker != nil }) else { return text }
+        let tidy = { (s: String) in verbatim ? s : Readable.clean(s) }
+        guard paragraphs.contains(where: { $0.speaker != nil }) else {
+            return paragraphs.isEmpty ? tidy(text) : paragraphs.map { tidy($0.text) }.joined(separator: "\n\n")
+        }
+        var previous: Int?
         return paragraphs.map { p in
-            p.speaker.map { "\(speakerName($0)): \(p.text)" } ?? p.text
+            defer { previous = p.speaker }
+            guard let speaker = p.speaker, speaker != previous else { return tidy(p.text) }
+            return "\(speakerName(speaker)): \(tidy(p.text))"
         }.joined(separator: "\n\n")
     }
 }

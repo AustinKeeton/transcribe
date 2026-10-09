@@ -3,6 +3,7 @@ import SwiftUI
 struct DetailView: View {
     @Environment(Library.self) private var library
     let id: UUID
+    @AppStorage("verbatim") private var verbatim = false
 
     var body: some View {
         if let t = library.items.first(where: { $0.id == id }) {
@@ -39,8 +40,13 @@ struct DetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if t.status == .done, !t.text.isEmpty {
-                    Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = t.exportText }
-                    ShareLink(item: t.exportText)
+                    Menu("Options", systemImage: "ellipsis") {
+                        Toggle("Verbatim", systemImage: "text.quote", isOn: $verbatim)
+                        Button("Copy", systemImage: "doc.on.doc") {
+                            UIPasteboard.general.string = t.exportText(verbatim: verbatim)
+                        }
+                    }
+                    ShareLink(item: t.exportText(verbatim: verbatim))
                 }
             }
         } else {
