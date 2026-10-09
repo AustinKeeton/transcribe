@@ -73,6 +73,9 @@ private struct Row: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(t.displayTitle).font(.headline).lineLimit(2)
+            if let subtitle = t.subtitle, !working {
+                Text(subtitle).font(.subheadline.weight(.medium)).lineLimit(1)
+            }
             if working {
                 TranscribeProgress(progress: stage?.value, label: stage?.label ?? "Preparing…")
             } else {
@@ -80,7 +83,7 @@ private struct Row: View {
             }
             HStack {
                 Text(t.created, format: .dateTime.month().day().hour().minute())
-                if t.title != nil { Text(t.sourceName).lineLimit(1) }
+                if t.template != nil || t.title != nil { Text(t.sourceName).lineLimit(1) }
             }
             .font(.caption).foregroundStyle(.tertiary)
         }
@@ -90,7 +93,7 @@ private struct Row: View {
         switch t.status {
         case .done:
             Text(t.text.isEmpty ? "(no speech found)" : raw ? t.text : Readable.format(t.text))
-                .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
         case .pending:
             TranscribeButton(t: t)
         case .failed:

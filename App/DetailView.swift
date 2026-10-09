@@ -30,6 +30,9 @@ struct DetailView: View {
                         if t.hasMedia { TranscribeButton(t: t, title: "Try again") }
                     }
                     if t.status == .done {
+                        if let subtitle = t.subtitle {
+                            Text(subtitle).font(.title3.weight(.semibold))
+                        }
                         TranscriptBody(transcript: t) { library.rename(t, speaker: $0, to: $1) }
                     }
                 }

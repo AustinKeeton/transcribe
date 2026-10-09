@@ -166,11 +166,16 @@ final class Library {
             return
         }
         try? Store.save(t)
-        if t.title == nil {
-            _ = report("Writing a title…")
-            t.title = await Titler.title(for: t.text)
-        }
         if mode == .coaching { t = await SpeakerNamer.suggest(for: t) }
+
+        // Title: the template is computed from facts; the topic line comes from the model.
+        let names = (0..<2).map(t.speakerName).filter { !$0.hasPrefix("Speaker ") }
+        let source = t.clientText
+        t.keywords = Titler.keywords(source, excluding: names)
+        _ = report("Writing a title…")
+        t.topic = await Titler.topic(text: source, coaching: mode == .coaching,
+                                     minutes: Int(((t.duration ?? 0) / 60).rounded()),
+                                     keywords: t.keywords ?? [], names: names)
 
         // Drop the app's own copy (never a linked original) once done.
         if t.mediaFile != nil {

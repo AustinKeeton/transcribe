@@ -42,7 +42,53 @@ struct Transcript: Codable, Identifiable, Hashable, Sendable {
     /// Set when adding speakers or the Parakeet redo failed, so it isn't retried on every launch.
     var upgradeError: String?
 
-    var displayTitle: String { title ?? sourceName }
+    /// AI topic line ("Overwhelm and time management"); nil when the model declined or failed.
+    var topic: String?
+    /// Frequent nouns, shown when there's no topic.
+    var keywords: [String]?
+
+    /// "Coaching with Isabel · 38 min" / "Voice note · 4 min" for transcripts made with a mode;
+    /// older ones keep their AI title.
+    var displayTitle: String { template ?? title ?? sourceName }
+
+    /// Second line under the title: the topic, else the top keywords.
+    var subtitle: String? {
+        if let topic { return topic }
+        guard let keywords, !keywords.isEmpty else { return nil }
+        return keywords.prefix(4).joined(separator: " · ")
+    }
+
+    var template: String? {
+        guard status == .done, let mode else { return nil }
+        let base: String
+        if mode == "coaching" {
+            let name = clientSpeaker.map(speakerName)
+            base = name.map { $0.hasPrefix("Speaker ") ? "Coaching session" : "Coaching with \($0)" } ?? "Coaching session"
+        } else {
+            base = "Voice note"
+        }
+        return [base, duration.map(Self.length)].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// In coaching the client usually does most of the talking.
+    var clientSpeaker: Int? {
+        var words: [Int: Int] = [:]
+        for s in segments { if let sp = s.speaker { words[sp, default: 0] += s.text.split(separator: " ").count } }
+        return words.max { $0.value < $1.value }?.key
+    }
+
+    /// The client's lines only (coaching), or everything.
+    var clientText: String {
+        guard mode == "coaching", let client = clientSpeaker else { return text }
+        return segments.filter { $0.speaker == client }.map(\.text).joined(separator: " ")
+    }
+
+    static func length(_ seconds: Double) -> String {
+        let s = Int(seconds.rounded())
+        if s < 60 { return "\(s) s" }
+        let minutes = Int((Double(s) / 60).rounded())
+        return minutes < 60 ? "\(minutes) min" : "\(minutes / 60) h \(minutes % 60) min"
+    }
     var hasMedia: Bool { mediaFile != nil || bookmark != nil }
 
     func speakerName(_ speaker: Int) -> String {
@@ -176,7 +222,6 @@ enum Store {
             t.words = result.words
             t.duration = result.duration
             progress(1)
-            t.title = await Titler.title(for: result.text)
             t.status = .done
             t.engine = .apple
             t.error = nil
