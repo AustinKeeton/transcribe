@@ -41,6 +41,8 @@ targets:
           - CFBundleURLName: org.trioaudie.transcribe
             CFBundleURLSchemes: [transcribe]
         NSSpeechRecognitionUsageDescription: Transcribes audio and video on this iPhone.
+        NSPhotoLibraryUsageDescription: Pick a video or recording to transcribe on this iPhone.
+        BGTaskSchedulerPermittedIdentifiers: [org.trioaudie.transcribe.job]
   TranscribeShare:
     type: app-extension
     platform: iOS

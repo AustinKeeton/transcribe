@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -6,6 +7,7 @@ struct ListView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var importing = false
     @State private var showingSettings = false
+    @State private var photoItem: PhotosPickerItem?
 
     var body: some View {
         @Bindable var library = library
@@ -31,9 +33,23 @@ struct ListView: View {
             .navigationDestination(for: UUID.self) { id in DetailView(id: id) }
             .toolbar {
                 Button("Settings", systemImage: "gearshape") { showingSettings = true }
-                Button("Import", systemImage: "plus") { importing = true }
+                Menu("Add", systemImage: "plus") {
+                    Button("From Files", systemImage: "folder") { importing = true }
+                    PhotosPicker(selection: $photoItem, matching: .videos) {
+                        Label("From Photos", systemImage: "photo.on.rectangle")
+                    }
+                }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .onChange(of: photoItem) {
+                guard let item = photoItem else { return }
+                photoItem = nil
+                Task {
+                    if let movie = try? await item.loadTransferable(type: MediaFile.self) {
+                        library.importCopy(movie.url, name: movie.name)
+                    }
+                }
+            }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.audiovisualContent]) { result in
                 if case .success(let url) = result {
                     Task { await library.importFile(url) }
@@ -85,15 +101,16 @@ private struct Row: View {
     }
 }
 
-/// Starts processing one recording. Borderless so it works inside a list row's link.
+/// Opens the transcription options. Borderless so it works inside a list row's link.
 struct TranscribeButton: View {
     @Environment(Library.self) private var library
     let t: Transcript
     var title = "Transcribe"
+    @State private var showingOptions = false
 
     var body: some View {
         Button {
-            Task { await library.process(t) }
+            showingOptions = true
         } label: {
             Label(title, systemImage: "waveform")
                 .font(.subheadline.bold())
@@ -101,5 +118,27 @@ struct TranscribeButton: View {
                 .background(.tint.opacity(0.15), in: Capsule())
         }
         .buttonStyle(.borderless)
+        .sheet(isPresented: $showingOptions) {
+            if library.modelsDownloaded {
+                TranscribeOptionsView(t: t)
+            } else {
+                NavigationStack { ModelsSection.standalone }
+            }
+        }
+    }
+}
+
+/// A video from Photos, copied out of the picker's temporary file.
+struct MediaFile: Transferable {
+    let url: URL
+    let name: String?
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .movie) { received in
+            let copy = FileManager.default.temporaryDirectory
+                .appending(path: UUID().uuidString + "." + received.file.pathExtension)
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return MediaFile(url: copy, name: received.file.lastPathComponent)
+        }
     }
 }

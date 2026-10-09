@@ -2,12 +2,10 @@
 
 An iPhone app for transcribing audio and video on the device.
 
-- **Share Sheet:** share a recording from Voice Memos, Photos or Files to add it. The app opens on it.
-- **Import:** the + button links to files in Files / iCloud Drive (originals are never copied or deleted).
-- **Transcribe on command:** each recording has a Transcribe button. Nothing runs on its own.
-- **Engines:** Apple's on-device `SpeechTranscriber` by default; [Parakeet Ultra](https://github.com/FluidInference/FluidAudio) as an optional download (~630 MB) in Settings.
-- **Speakers:** labelled with FluidAudio's Sortformer model (~100 MB, downloaded on first use), named automatically from introductions and direct address ("Hi Dana"), and renamable by tapping the label.
-- **Titles:** short descriptions from the on-device Apple Intelligence model.
+- **Share Sheet / Files / Photos:** add a recording; files from Files are linked, not copied.
+- **Transcribe on command,** per recording: *Coaching (2 speakers)* or *Single speaker*, plus custom vocabulary (client name, company, terms).
+- **All on device (Neural Engine), via [FluidAudio](https://github.com/FluidInference/FluidAudio):** Silero VAD → Parakeet TDT 0.6B v2 (English) per speech segment → vocabulary rescoring (filtered to replacements that resemble the term) → offline pyannote diarization with exactly two speakers in coaching mode. Models (~650 MB) download once, Wi-Fi only.
+- **Verbatim:** every um, stutter and pause kept; formatting only (capitals, commas around fillers, pause markers). Speakers renamable; names detected from introductions and direct address.
 
 Requires iOS 26.
 

@@ -35,6 +35,10 @@ struct Transcript: Codable, Identifiable, Hashable, Sendable {
     var namesSuggested: Bool?
     var error: String?
     var engine: Engine?
+    /// "coaching" (two speakers) or "single", as chosen when transcribing.
+    var mode: String?
+    /// Custom vocabulary used for this transcription.
+    var vocabulary: [String]?
     /// Set when adding speakers or the Parakeet redo failed, so it isn't retried on every launch.
     var upgradeError: String?
 

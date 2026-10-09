@@ -25,7 +25,7 @@ struct DetailView: View {
                             .foregroundStyle(.red)
                         TranscribeButton(t: t, title: "Try again")
                     } else if let error = t.upgradeError {
-                        Label("Couldn't add speakers: \(error)", systemImage: "exclamationmark.triangle")
+                        Label(error, systemImage: "exclamationmark.triangle")
                             .font(.caption).foregroundStyle(.secondary)
                         if t.hasMedia { TranscribeButton(t: t, title: "Try again") }
                     }
