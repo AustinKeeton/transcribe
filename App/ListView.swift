@@ -52,7 +52,7 @@ private struct Row: View {
     let t: Transcript
     let working: Bool
     let stage: Library.Stage?
-    @AppStorage("verbatim") private var verbatim = false
+    @AppStorage("rawText") private var raw = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -73,7 +73,7 @@ private struct Row: View {
     @ViewBuilder private var status: some View {
         switch t.status {
         case .done:
-            Text(t.text.isEmpty ? "(no speech found)" : verbatim ? t.text : Readable.clean(t.text))
+            Text(t.text.isEmpty ? "(no speech found)" : raw ? t.text : Readable.format(t.text))
                 .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
         case .pending:
             TranscribeButton(t: t)

@@ -3,7 +3,7 @@ import SwiftUI
 struct DetailView: View {
     @Environment(Library.self) private var library
     let id: UUID
-    @AppStorage("verbatim") private var verbatim = false
+    @AppStorage("rawText") private var raw = false
 
     var body: some View {
         if let t = library.items.first(where: { $0.id == id }) {
@@ -41,12 +41,12 @@ struct DetailView: View {
             .toolbar {
                 if t.status == .done, !t.text.isEmpty {
                     Menu("Options", systemImage: "ellipsis") {
-                        Toggle("Verbatim", systemImage: "text.quote", isOn: $verbatim)
+                        Toggle("Raw text", systemImage: "text.quote", isOn: $raw)
                         Button("Copy", systemImage: "doc.on.doc") {
-                            UIPasteboard.general.string = t.exportText(verbatim: verbatim)
+                            UIPasteboard.general.string = t.exportText(raw: raw)
                         }
                     }
-                    ShareLink(item: t.exportText(verbatim: verbatim))
+                    ShareLink(item: t.exportText(raw: raw))
                 }
             }
         } else {

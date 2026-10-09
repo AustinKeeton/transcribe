@@ -6,19 +6,19 @@ struct TranscriptBody: View {
     let transcript: Transcript
     var rename: ((Int, String) -> Void)?
 
-    /// Off: readable text (no fillers or stutters). On: exactly as spoken.
-    @AppStorage("verbatim") private var verbatim = false
+    /// Off: every word as said, formatted, with pauses marked. On: the engine's raw text.
+    @AppStorage("rawText") private var raw = false
     @State private var renaming: Int?
     @State private var draft = ""
 
     var body: some View {
         let segments = transcript.segments
         if segments.isEmpty {
-            Text(transcript.text.isEmpty ? "(no speech found)" : verbatim ? transcript.text : Readable.clean(transcript.text))
+            Text(transcript.text.isEmpty ? "(no speech found)" : raw ? transcript.text : Readable.format(transcript.text))
                 .textSelection(.enabled)
         } else {
             let longRecording = (segments.last?.start ?? 0) >= 3600
-            let paragraphs = Self.paragraphs(segments)
+            let paragraphs = Self.paragraphs(segments, pauses: !raw)
             LazyVStack(alignment: .leading, spacing: 14) {
                 ForEach(paragraphs.indices, id: \.self) { i in
                     let p = paragraphs[i]
@@ -31,7 +31,7 @@ struct TranscriptBody: View {
                             if let speaker = p.speaker, i == 0 || paragraphs[i - 1].speaker != speaker {
                                 speakerLabel(speaker)
                             }
-                            Text(verbatim ? p.text : Readable.clean(p.text)).textSelection(.enabled)
+                            Text(raw ? p.text : Readable.format(p.text)).textSelection(.enabled)
                         }
                     }
                 }
@@ -71,13 +71,18 @@ struct TranscriptBody: View {
 
     /// Joins phrases into paragraphs. Breaks at a change of speaker; at a pause or after ~30 s
     /// only once the sentence has ended, so a paragraph never stops mid-sentence (up to ~90 s).
-    nonisolated static func paragraphs(_ segments: [Segment]) -> [Segment] {
+    /// With `pauses`, silences inside a paragraph are marked ("…" or "[pause, 5 s]").
+    nonisolated static func paragraphs(_ segments: [Segment], pauses: Bool = false) -> [Segment] {
         var out: [Segment] = []
         for s in smoothed(segments) {
             if var last = out.last, last.speaker == s.speaker {
                 let sentenceEnded = last.text.last.map { ".?!".contains($0) } ?? false
-                let shortGap = s.start - last.end < 1.5 && s.end - last.start < 30
+                let gap = s.start - last.end
+                let shortGap = gap < 1.5 && s.end - last.start < 30
                 if shortGap || (!sentenceEnded && s.end - last.start < 90) {
+                    if pauses, let marker = Readable.pause(gap, afterSentenceEnd: sentenceEnded) {
+                        last.text += " " + marker
+                    }
                     last.text += " " + s.text
                     last.end = s.end
                     out[out.count - 1] = last
