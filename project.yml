@@ -1,0 +1,66 @@
+name: Transcribe
+options:
+  bundleIdPrefix: org.trioaudie
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    exactVersion: 0.17.7
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    GENERATE_INFOPLIST_FILE: "YES"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: 46VPXL637K
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  Transcribe:
+    type: application
+    platform: iOS
+    sources: [App, Shared]
+    dependencies:
+      - target: TranscribeShare
+      - package: FluidAudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.trioaudie.transcribe
+    entitlements:
+      path: App/Transcribe.entitlements
+      properties:
+        com.apple.security.application-groups: [group.org.trioaudie.transcribe]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Transcribe
+        UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLName: org.trioaudie.transcribe
+            CFBundleURLSchemes: [transcribe]
+        NSSpeechRecognitionUsageDescription: Transcribes audio and video on this iPhone.
+  TranscribeShare:
+    type: app-extension
+    platform: iOS
+    sources: [ShareExtension, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.trioaudie.transcribe.share
+    entitlements:
+      path: ShareExtension/TranscribeShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.org.trioaudie.transcribe]
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Transcribe
+        NSSpeechRecognitionUsageDescription: Transcribes audio and video on this iPhone.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $att,
+              ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "public.audiovisual-content"
+              ).@count == 1).@count == 1
